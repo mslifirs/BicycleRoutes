@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Bike Routes</title>
+		<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+		<link rel="stylesheet" media="screen" href="http://openfontlibrary.org/face/didact-gothic" rel="stylesheet" type="text/css"/> 
+		<link href='http://fonts.googleapis.com/css?family=Chau+Philomene+One' rel='stylesheet' type='text/css'>
+		<style type="text/css">
+			html { height: 100%; margin: 0; }
+			body { height: 100%; margin: 0; padding: 0; background-color: #3D414E;}
+			#header {
+				height: 90px;
+				width: 100%;
+			}
+			#headerwrapper {
+				margin: 0 auto;
+				padding: 7px 0;
+				width: 940px;
+			}
+			#headerwrapper h1 {
+				color: #ABE1B9;
+				display: block;
+				font-family: 'Chau Philomene One',sans-serif;
+				font-size: 40px;
+				font-weight: normal;
+				margin: 10px 0;
+				text-shadow: 2px 2px 2px #000000;
+			}
+			#topnavigation {
+				background-color: #222940;
+				height: 65px;
+				width: 100%;
+			}
+			#topnavigationwrapper {
+				margin: 0 auto;
+				padding: 7px 0;
+				width: 940px;
+			}
+			#content_canvas { width:100%; }
+			#map_canvas { height: 100%; width:100%;  height: 350px; position: absolute; z-index: 1}
+			#content {
+				background-color: rgba(196, 213, 195, 0.66);
+				width: 100%;
+				height: 210px;
+				z-index: 2;
+				position: absolute;
+				padding: 70px 0;
+			}
+			#search {  
+				margin: 0 auto;
+				width: 520px;
+			}
+			#content form input {
+				-moz-box-sizing:border-box;box-sizing:border-box;
+				background-color: #FFF;
+				border: 1px solid #555;
+				border-radius: 10px 10px 10px 10px;
+				display: block;
+				font-size: 18px;
+				margin: 10px 5px 0;
+				padding: 10px;
+				font-family: 'Didact Gothic', Georgia, serif;
+			}
+			#content form input[type="search"] {
+				box-shadow: 0px 0px 3px #FFFFFF, inset 1px 1px 1px #BBB;
+				width: 500px;
+				-moz-width: 480px;
+			}
+			#content form input[type="submit"] {
+				box-shadow: 1px 1px 2px #666;
+				width: 500px;
+				cursor: pointer;
+				background: #9dd53a; /* Old browsers */
+				background: -moz-linear-gradient(top,  #9dd53a 0%, #a1d54f 50%, #80c217 51%, #7cbc0a 100%); /* FF3.6+ */
+				background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#9dd53a), color-stop(50%,#a1d54f), color-stop(51%,#80c217), color-stop(100%,#7cbc0a)); /* Chrome,Safari4+ */
+				background: -webkit-linear-gradient(top,  #9dd53a 0%,#a1d54f 50%,#80c217 51%,#7cbc0a 100%); /* Chrome10+,Safari5.1+ */
+				background: -o-linear-gradient(top,  #9dd53a 0%,#a1d54f 50%,#80c217 51%,#7cbc0a 100%); /* Opera 11.10+ */
+				background: -ms-linear-gradient(top,  #9dd53a 0%,#a1d54f 50%,#80c217 51%,#7cbc0a 100%); /* IE10+ */
+				background: linear-gradient(to bottom,  #9dd53a 0%,#a1d54f 50%,#80c217 51%,#7cbc0a 100%); /* W3C */
+				filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#9dd53a', endColorstr='#7cbc0a',GradientType=0 ); /* IE6-9 */
+			}
+			#content form input.required {
+
+			}
+			#content form input.optional {
+				background: #dcdcdc;	
+			}
+			#content form a#usedetectedposition {
+				background: none repeat scroll 0 0 rgba(3, 3, 3, 0.32);
+				border-color: #666666;
+				border-image: none;
+				border-radius: 0 0 5px 5px;
+				border: 1px solid #666666;
+				border-style: none solid solid;
+				border-width: 0 1px 1px;
+				box-shadow: 0 0 2px #E4E4E4;
+				color: #D0E5F8;
+				display: block;
+				font-family: verdana;
+				font-size: 13px;
+				margin: 0 15px 10px;
+				padding: 5px 10px;
+				text-decoration: none;
+				text-shadow: 1px 1px 0 #222;
+				width: 460px;
+			}
+
+			input[type="search"]::-webkit-search-decoration,
+			input[type="search"]::-webkit-search-cancel-button,
+			input[type="search"]::-webkit-search-results-button,
+			input[type="search"]::-webkit-search-results-decoration {
+				display: none;
+			}
+			input[type=search] {
+				outline: none;
+				-moz-appearance:none;
+				-webkit-appearance:none;
+			}
+
+		</style>
+		
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5/jquery.min.js"></script>
+		<script type="text/javascript"
+				src="https://maps.googleapis.com/maps/api/js?sensor=false">
+		</script>
+
+		<script type="text/javascript">
+			
+			var geocoder;
+			var position;
+			var map;
+			var formatted_adress;
+			
+			function initialize() {
+				map = getMap();
+				geocoder = new google.maps.Geocoder();
+				initPosition(); // get user position, set map and search field in callback
+				$('#start').focus(); // focus on search field
+			}
+			
+			function getMap() {
+				var mapOptions = {
+					center: new google.maps.LatLng(-34.397, 150.644),
+					disableDefaultUI: true,
+					zoom: 10,
+					mapTypeId: google.maps.MapTypeId.TERRAIN //ROADMAP
+				};
+				return new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
+			}
+			
+			function initPosition() {
+				$('#usedetectedposition').hide();
+				try {
+					navigator.geolocation.getCurrentPosition(success, error);
+				} catch (e) {
+					alert('geolocation not supported, ' + e.msg );
+				}
+				function success(currentPosition) {
+					position = currentPosition;
+					var lat = position.coords.latitude;
+					var lng = position.coords.longitude;
+					var latlen = new google.maps.LatLng(lat, lng);
+					map.setCenter(latlen, 13);
+					setStartByLatLng(latlen);
+				}
+				function error(msg) {
+					alert('error: ' + msg);
+				}
+			}
+			
+			function setStartByLatLng(latlng) {
+				geocoder.geocode({'latLng': latlng}, function(results, status) {
+					if (status == google.maps.GeocoderStatus.OK) {
+						formatted_adress = results[0].formatted_address.toString();
+						$('#usedetectedposition').text("Starting from \"" + formatted_adress + "\"?");
+						$('#usedetectedposition').slideDown('fast');
+					} else {
+						alert("Geocoder failed due to: " + status);
+					}
+				});
+			}
+			
+			function setStartToPosition() {
+				$('#start').val(formatted_adress);
+				$('#start').focus();
+			}
+			
+		</script>
+	</head>
+	<body onload="initialize()">
+		<div id="header">
+			<div id="headerwrapper">
+				<h1>Bicycle Routes</h1>
+			</div>
+		</div>
+		<div id="topnavigation">
+			<div id="topnavigationwrapper">
+
+			</div>
+		</div>
+		<div id="content_canvas">
+			<div id="map_canvas"></div>
+			<div id="content">
+				<div id="search">
+					<form action="#" method="POST">
+						<input type="search" placeholder="Where do you want to start?" class="required" name="start" id="start" 
+							   form autocomplete="off" tabindex="10" />
+						<a href="javascript:setStartToPosition();" id="usedetectedposition">Use current adress</a>
+						<input type="search" placeholder="Add a destination if you like." class="optional" name="destination"
+							   form autocomplete="off" tabindex="20" />
+						<input type="submit" value="Find routes" tabindex="30" />
+					</form>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
