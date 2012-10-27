@@ -39,7 +39,7 @@
 			#content_canvas { width:100%; }
 			#map_canvas { height: 100%; width:100%;  height: 350px; position: absolute; z-index: 1}
 			#content {
-				background-color: rgba(196, 213, 195, 0.66);
+				background-color: rgba(196, 213, 195, 0.5);
 				width: 100%;
 				height: 210px;
 				z-index: 2;
@@ -118,21 +118,69 @@
 			}
 
 		</style>
-		
+
 		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5/jquery.min.js"></script>
 		<script type="text/javascript"
-				src="https://maps.googleapis.com/maps/api/js?sensor=false">
+				src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAJbtAJKYHFj2zYRdJPecH64rYOjqz8mvY&sensor=false&libraries=weather">
 		</script>
-
 		<script type="text/javascript">
 			
 			var geocoder;
 			var position;
-			var map;
 			var formatted_adress;
+			var rendererOptions = {
+				draggable: true
+			};
+			var directionsDisplay = new google.maps.DirectionsRenderer(rendererOptions);;
+			var directionsService = new google.maps.DirectionsService();
+			var map;
+			var elevator;
+			var path;
+			var distance;
+			
+			// do when page is loaded
+			$(document).ready(function() {
+				
+				// call init function:
+				initialize();
+				
+				// enable autocomplete
+				var input = document.getElementById('searchTextField');
+				var options = {
+					bounds: defaultBounds,
+					types: ['establishment']
+				};
+				autocomplete = new google.maps.places.Autocomplete(input, options);
+				
+				// prevent search form from submitting / reloading site
+				$(searchform).submit(function(e) {
+					e.preventDefault();
+				});
+			});
+				
+			// Load the Visualization API and the columnchart package.
+			google.load('visualization', '1', {packages: ['corechart']});
 			
 			function initialize() {
 				map = getMap();
+				
+				// Create an ElevationService.
+				elevator = new google.maps.ElevationService();				
+				
+				var weatherLayer = new google.maps.weather.WeatherLayer({
+					temperatureUnits: google.maps.weather.TemperatureUnit.CELSIUS
+				});
+				weatherLayer.setMap(map);
+
+				var cloudLayer = new google.maps.weather.CloudLayer();
+				cloudLayer.setMap(map);
+		
+				var bikeLayer = new google.maps.BicyclingLayer();
+				bikeLayer.setMap(map);
+				
+				directionsDisplay.setMap(map);
+				directionsDisplay.setPanel(document.getElementById('directionsPanel'));
+				
 				geocoder = new google.maps.Geocoder();
 				initPosition(); // get user position, set map and search field in callback
 				$('#start').focus(); // focus on search field
@@ -140,11 +188,12 @@
 			
 			function getMap() {
 				var mapOptions = {
-					center: new google.maps.LatLng(-34.397, 150.644),
+					center: new google.maps.LatLng(60.17295,24.93981),
 					disableDefaultUI: true,
-					zoom: 10,
-					mapTypeId: google.maps.MapTypeId.TERRAIN //ROADMAP
+					zoom: 12,
+					mapTypeId: google.maps.MapTypeId.ROADMAP
 				};
+				
 				return new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
 			}
 			
@@ -185,9 +234,106 @@
 				$('#start').focus();
 			}
 			
+			
+			function calcRoute() {
+
+				var request = {
+					origin: 'Metsala, Helsinki, Suomi',
+					destination: 'Albertinkatu, Helsinki, Suomi',
+					travelMode: google.maps.DirectionsTravelMode.BICYCLING
+				};
+		
+				directionsService.route(request, function(response, status) {
+					if (status == google.maps.DirectionsStatus.OK) {
+						directionsDisplay.setDirections(response);
+						path = response;
+						drawPath();
+					}
+					else {
+						recalcRoute();
+					}
+          
+				});
+		
+			}
+			function recalcRoute() {
+
+				var request = {
+					origin: 'Metsala, Helsinki, Suomi',
+					destination: 'Albertinkatu, Helsinki, Suomi',
+					travelMode: google.maps.DirectionsTravelMode.DRIVING
+				};
+		  
+				directionsService.route(request, function(response, status) {
+					if (status == google.maps.DirectionsStatus.OK) {
+						directionsDisplay.setDirections(response);
+						path = response;
+						drawPath();
+					}
+				});
+		 
+        
+			}
+	  
+	  
+			function drawPath() {
+
+				// Create a new chart in the elevation_chart DIV.
+				var pathpoints = [];
+				pathpoints = path.routes[0].overview_path;
+				distance = path.routes[0].legs[0].distance.value;
+
+				// Create a PathElevationRequest object using this array.
+				// Ask for 256 samples along that path.
+				var pathRequest = {
+					'path': pathpoints,
+					'samples': 500
+				}
+
+				// Initiate the path request.
+				elevator.getElevationAlongPath(pathRequest, plotElevation);
+			}
+
+			// Takes an array of ElevationResult objects, draws the path on the map
+			// and plots the elevation profile on a Visualization API ColumnChart.
+			function plotElevation(results, status) {
+				if (status == google.maps.ElevationStatus.OK) {
+					elevations = results;
+
+					// Extract the elevation samples from the returned results
+					// and store them in an array of LatLngs.
+					var elevationPath = [];
+					for (var i = 0; i < results.length; i++) {
+						elevationPath.push(elevations[i].location);
+					}
+			
+
+					// Extract the data from which to populate the chart.
+					var dataTable = new google.visualization.DataTable();
+					var sample = distance/results.length; 
+					dataTable.addColumn('number', 'Distance');
+					dataTable.addColumn('number', 'Elevation');
+					for (var i = 0; i < results.length; i++) {
+						dataTable.addRow([i*sample, elevations[i].elevation]);
+					}
+		  
+					// Draw the chart using the data within its DIV.
+					var chart = new google.visualization.ColumnChart(document.getElementById('elevation_chart'));
+		
+					document.getElementById('elevation_chart').style.display = 'block';
+					var options = {
+						width: 1000,
+						height: 200,
+						legend: 'none',
+						titleY: 'Elevation (m)',
+						titleX: 'Distance (m)'
+					}
+					chart.draw(dataTable, options);
+				}
+			}
 		</script>
 	</head>
-	<body onload="initialize()">
+	<body>
 		<div id="header">
 			<div id="headerwrapper">
 				<h1>Bicycle Routes</h1>
@@ -202,16 +348,17 @@
 			<div id="map_canvas"></div>
 			<div id="content">
 				<div id="search">
-					<form action="#" method="POST">
+					<form id="searchform" action="#" method="POST">
 						<input type="search" placeholder="Where do you want to start?" class="required" name="start" id="start" 
-							   form autocomplete="off" tabindex="10" />
+							   autocomplete="off" tabindex="10" />
 						<a href="javascript:setStartToPosition();" id="usedetectedposition">Use current adress</a>
-						<input type="search" placeholder="Add a destination if you like." class="optional" name="destination"
-							   form autocomplete="off" tabindex="20" />
-						<input type="submit" value="Find routes" tabindex="30" />
+						<input type="search" placeholder="Add a destination if you like." class="optional" name="destination" id="end"
+							   autocomplete="off" tabindex="20" />
+						<input type="submit"  onclick="calcRoute();" value="Find routes" tabindex="30" />
 					</form>
 				</div>
 			</div>
 		</div>
+		<div id="elevation_chart"></div>
 	</body>
 </html>
