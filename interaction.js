@@ -5,7 +5,6 @@ var rendererOptions = {
 	draggable: true
 };
 var directionsDisplay = new google.maps.DirectionsRenderer(rendererOptions);
-;
 var directionsService = new google.maps.DirectionsService();
 var map;
 var elevator;
@@ -19,7 +18,7 @@ $(document).ready(function() {
 	initialize();
 				
 	// enable autocomplete
-	var input = document.getElementById('searchTextField');
+	var input = document.getElementById('start');
 	var options = {
 		bounds: defaultBounds,
 		types: ['establishment']
