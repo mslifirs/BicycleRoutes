@@ -4,12 +4,20 @@ var formatted_adress;
 var rendererOptions = {
 	draggable: true
 };
-var directionsDisplay = new google.maps.DirectionsRenderer(rendererOptions);
+var directionsDisplay = new google.maps.DirectionsRenderer(rendererOptions);;
 var directionsService = new google.maps.DirectionsService();
 var map;
+var chart;
 var elevator;
 var path;
 var distance;
+var elevationPathlocations = [];
+var marker;
+
+// Load the Visualization API and the columnchart package.
+google.load('visualization', '1', {
+	packages: ['corechart']
+	});
 			
 // do when page is loaded
 $(document).ready(function() {
@@ -31,17 +39,18 @@ $(document).ready(function() {
 	});
 });
 				
-// Load the Visualization API and the columnchart package.
-google.load('visualization', '1', {
-	packages: ['corechart']
-	});
 			
 function initialize() {
 	map = getMap();
-				
+	
+	// Create marker
+	marker = new google.maps.Marker({
+		map: map
+	});			
 	// Create an ElevationService.
 	elevator = new google.maps.ElevationService();				
 				
+	// Create WeatherLayer
 	var weatherLayer = new google.maps.weather.WeatherLayer({
 		temperatureUnits: google.maps.weather.TemperatureUnit.CELSIUS
 	});
@@ -50,9 +59,11 @@ function initialize() {
 	var cloudLayer = new google.maps.weather.CloudLayer();
 	cloudLayer.setMap(map);
 		
+	// Create BikeLayer
 	var bikeLayer = new google.maps.BicyclingLayer();
 	bikeLayer.setMap(map);
 				
+	// Create DirectionDisplay
 	directionsDisplay.setMap(map);
 	directionsDisplay.setPanel(document.getElementById('directionsPanel'));
 				
@@ -182,29 +193,75 @@ function plotElevation(results, status) {
 		var elevationPath = [];
 		for (var i = 0; i < results.length; i++) {
 			elevationPath.push(elevations[i].location);
+			elevationPathlocations.push(elevations[i].location);
 		}
 			
 
-		// Extract the data from which to populate the chart.
-		var dataTable = new google.visualization.DataTable();
-		var sample = distance/results.length; 
-		dataTable.addColumn('number', 'Distance');
-		dataTable.addColumn('number', 'Elevation');
-		for (var i = 0; i < results.length; i++) {
-			dataTable.addRow([i*sample, elevations[i].elevation]);
-		}
+		// Count total elevation
+			var max = Math.max.apply(Math, elevationPath);
+			var min = Math.min.apply(Math, elevationPath);
+			var totalelevation = max.toFixed(0) - min.toFixed(0);
+			totalelevation = parseFloat(totalelevation);
+			if (totalelevation < 30){
+				//alert("Route profile: flat. Total elevation: " + totalelevation);
+				}
+			else if (totalelevation > 30 && totalelevation < 100){
+				//alert("Route profile: hilly. Total elevation: " + totalelevation);
+				}
+			else if (totalelevation > 100 && totalelevation < 500){
+				//alert("Route profile: hard. Total elevation: " + totalelevation);
+				}
+			else if (totalelevation > 500){
+				//alert("Route profile: extreme. Total elevation: " + totalelevation);
+				}
+
+          // Extract the data from which to populate the chart and decrease precision
+          var dataTable = new google.visualization.DataTable();
+		  var sample = distance/results.length; 
+		  sample = sample.toFixed(2);
+		  sample = parseFloat(sample);
+          dataTable.addColumn('number', 'Distance');
+          dataTable.addColumn('number', 'Elevation');
+          for (var i = 0; i < results.length; i++) {
+		var temp = elevations[i].elevation;
+		temp = temp.toFixed(2);
+		temp = parseFloat(temp);
+        	dataTable.addRow([i*sample, temp]);
+          }
+		var formatter1 = new google.visualization.NumberFormat({suffix: 'm'});
+		formatter1.format(dataTable, 0); // Apply formatter to first column
+		var formatter2 = new google.visualization.NumberFormat({suffix: 'm'});
+		formatter2.format(dataTable, 1); // Apply formatter to first column
 		  
-		// Draw the chart using the data within its DIV.
-		var chart = new google.visualization.ColumnChart(document.getElementById('elevation_chart'));
+		  // Draw the chart using the data within its DIV.
+		  chart = new google.visualization.ColumnChart(document.getElementById('elevation_chart'));
 		
-		document.getElementById('elevation_chart').style.display = 'block';
-		var options = {
-			width: 1000,
-			height: 200,
-			legend: 'none',
-			titleY: 'Elevation (m)',
-			titleX: 'Distance (m)'
-		}
+          document.getElementById('elevation_chart').style.display = 'block';
+          var options = {
+            	width: 1000,
+           	height: 200,
+		legend: 'none',
+            	titleY: 'Elevation (m)',
+		titleX: 'Distance (m)'
+          }
+		
 		chart.draw(dataTable, options);
+		  
+		// Adding event listener to chart
+		google.visualization.events.addListener(chart, 'select', selectHandler);
+		var marker = new google.maps.Marker({
+            		position: position,
+            		map: map
+        	});
+			
 	}
 }
+
+function selectHandler(e) {
+		var selection = chart.getSelection()
+		for (var i = 0; i < selection.length; i++){
+		var number = selection[i].row;
+		var position = elevationPathlocations[number];
+			marker.setPosition(position);
+		}
+		}
