@@ -16,6 +16,8 @@ var elevationPathlocations = [];
 var marker;
 var elevations;
 
+// Load the Visualization API and the columnchart package.
+	google.load('visualization', '1', {packages: ['corechart']});
 
 $(document).ready(function () {
 	
@@ -23,11 +25,6 @@ $(document).ready(function () {
 //	THIS PRODUCES AN ERROR FOR ME:
 //	Uncaught TypeError: Object #<Object> has no method 'load' 
 //	
-//	I dont know why :/
-//	// Load the Visualization API and the columnchart package.
-//	google.load('visualization', '1', {
-//		packages: ['corechart']
-//	});
 	
 	initializeMap();
 	// init map:
