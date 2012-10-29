@@ -1,43 +1,123 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>Bike Routes</title>
+		<title>Way2Cycle - hit the road, motherfucker!</title>
 		<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
-		<link rel="stylesheet" media="screen" href="http://openfontlibrary.org/face/didact-gothic" type="text/css"/> 
+		<!-- fonts-->
+		<link href="http://openfontlibrary.org/face/didact-gothic" rel="stylesheet" media="screen"  type="text/css"/> 
 		<link href='http://fonts.googleapis.com/css?family=Chau+Philomene+One' rel='stylesheet' type='text/css'>
+		<!-- style sheet -->
 		<link rel="stylesheet" type="text/css" href="style.css">
-		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5/jquery.min.js"></script>
+		<!-- jquery -->
+		<script src="http://code.jquery.com/jquery-latest.js"></script>
+		<!-- google maps api -->
 		<script type="text/javascript"
-				src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAJbtAJKYHFj2zYRdJPecH64rYOjqz8mvY&sensor=false&libraries=weather">
+				src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAJbtAJKYHFj2zYRdJPecH64rYOjqz8mvY&sensor=false&libraries=weather,places&v=3.exp">
 		</script>
+		<script type="text/javascript">
+			
+			$(document).ready(function() {
+				
+				// hide top search, interactive map button and infopanels
+				$("#topnavigation").hide();
+				$('#edit_map a').hide();
+				$('.infoPanel').hide();
+				
+				$("#centered_start").focus(); // focus on centered search
+			
+				// add submit handler for centered search
+				$("#centered_search").submit(function(e) {
+					e.preventDefault();
+					switchToResultsInterface();
+					calcRoute($('#top_start').val(), $('#top_end').val());
+				});
+				
+				// add submit handler for top search
+				$("#top_search").submit(function(e) {
+					e.preventDefault();
+					calcRoute($('#top_start').val(), $('#top_end').val());
+				});
+			});
+			
+			function switchToResultsInterface() {
+				// store entered values into top search
+				$('#top_start').val($('#centered_start').val());
+				$('#top_end').val($('#centered_end').val());
+				// fade out centered search and overlay
+				$('#centered_search').remove();
+				// fade in top search
+				$("#topnavigation").show();
+				$("#map").addClass('map_topmargin');
+				// show interactive map button
+				$('#edit_map a').show();
+				
+			}
+			
+			function toggleOverlay() {
+				$('#map_overlay').toggle();
+				if ($('#edit_map a').text() == "Activate Interactive Map") {
+					$('#edit_map a').text("Deactivate Interactive Map");
+				} else {
+					$('#edit_map a').text("Activate Interactive Map");
+				}
+			}
+			
+		</script>
+		<!-- site scripts -->
+		<script type="text/javascript" src="autoCompletition.js"></script> 
 		<script type="text/javascript" src="interaction.js"></script>
 	</head>
 	<body>
 		<div id="header">
 			<div id="headerwrapper">
-				<h1>Bicycle Routes</h1>
+				<h1>Way2Cycle</h1><h2>hit the road, motherfucker!</h2>
 			</div>
 		</div>
 		<div id="topnavigation">
-			<div id="topnavigationwrapper">
-
-			</div>
-		</div>
-		<div id="content_canvas">
-			<div id="map_canvas"></div>
-			<div id="content">
-				<div id="search">
-					<form id="searchform" action="#" method="POST">
-						<input id="start" type="search" placeholder="Where do you want to start?" class="required" name="start" 
-							   autocomplete="off" tabindex="10" />
-						<a href="javascript:setStartToPosition();" id="usedetectedposition">Use current adress</a>
-						<input type="search" placeholder="Add a destination if you like." class="optional" name="destination" id="end"
-							   autocomplete="off" tabindex="20" />
-						<input type="submit"  onclick="calcRoute();" value="Find routes" tabindex="30" />
+			<div class="content_margin">
+				<div id="top_search">
+					<form action="#" method="POST">
+						<input id="top_start" type="search" placeholder="Where do you want to start?" class="required"  
+							   autocomplete="off" tabindex="40" />
+						<input id="top_end" type="search" placeholder="What's your destination?" class="optional"  
+							   autocomplete="off" tabindex="50" />
+						<input type="submit" value="Find route" tabindex="60" />
 					</form>
 				</div>
 			</div>
 		</div>
-		<div id="elevation_chart"></div>
+		<div id="map">
+			<div id="map_canvas"></div>
+			<div id="map_wrapper">
+				<div id="map_overlay">
+				</div>
+				<div id="edit_map"><a href="javascript:toggleOverlay()">Activate Interactive Map</a></div>
+				<div id="centered_search">
+					<form action="#" method="POST">
+						<input id="centered_start" type="search" placeholder="Where do you want to start?" class="required"  
+							   autocomplete="off" tabindex="10" />
+						<input id="centered_end" type="search" placeholder="What's your destination?" class="optional"  
+							   autocomplete="off" tabindex="20" />
+						<input type="submit" value="Find route" tabindex="30" />
+					</form>
+				</div>
+			</div>
+		</div>
+		<div id="text">
+			<div class="content_margin">
+				<div id="elevation_chart" class="infoPanel fullPanel">
+					<h3>Elevation Profile</h3>
+					<div id="elevationChartContent"></div>
+				</div>
+				<div id="directionsPanel" class="infoPanel floatingPanel float_l">
+					<h3>Directions</h3>
+					<div id="directionsPanelContent" class="floatingPanelContent"></div>
+				</div>
+				<div id="infoPanel" class="infoPanel floatingPanel float_r">
+					<h3>Route Profile Information</h3>
+				</div>
+				<div class="clear"></div>
+			</div>
+		</div>
 	</body>
 </html>
